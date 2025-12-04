@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Masterity: Chance to Necessity</title>
     
-    <!-- 1. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. Configure Tailwind Theme -->
     <script>
       tailwind.config = {
         theme: {
@@ -24,6 +22,10 @@
             fontFamily: {
               sans: ['Pretendard', 'Inter', 'sans-serif'],
             },
+            animation: {
+              'shimmer': 'shimmer 2.5s infinite',
+              'subtle-bounce': 'subtle-bounce 2s infinite ease-in-out',
+            },
             keyframes: {
               shimmer: {
                 '0%': { transform: 'translateX(-100%)' },
@@ -33,26 +35,15 @@
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-5px)' },
               }
-            },
-            animation: {
-              'shimmer': 'shimmer 2.5s infinite',
-              'subtle-bounce': 'subtle-bounce 2s infinite ease-in-out',
             }
           }
         }
       }
     </script>
 
-    <!-- 3. Load Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 
-    <!-- 4. Load React & ReactDOM & Babel -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- 5. Custom CSS for 3D Flip -->
     <style>
       body {
         font-family: 'Pretendard', 'Inter', sans-serif;
@@ -60,644 +51,471 @@
         color: #E5E7EB;
         overflow-x: hidden;
       }
-      .perspective-1000 {
+      /* 3D Flip Card Styles */
+      .flip-card {
         perspective: 1000px;
+        height: 380px;
+        cursor: pointer;
       }
-      .transform-style-3d {
+      .flip-card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.6s;
         transform-style: preserve-3d;
       }
-      .backface-hidden {
-        backface-visibility: hidden;
-      }
-      .rotate-y-180 {
+      .flip-card.flipped .flip-card-inner {
         transform: rotateY(180deg);
       }
-      html {
-        scroll-behavior: smooth;
+      .flip-card-front, .flip-card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        border-radius: 1rem;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
       }
+      .flip-card-front {
+        background-color: #2A2A2A;
+        border: 1px solid #374151;
+      }
+      .flip-card-back {
+        background: linear-gradient(to bottom right, #8C86FF, #6d66ff);
+        transform: rotateY(180deg);
+        color: white;
+      }
+      html { scroll-behavior: smooth; }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
-  }
-}
-</script>
 </head>
-<body>
-    <div id="root"></div>
+<body class="antialiased">
 
-    <!-- 6. React Application Logic -->
-    <script type="text/babel">
-      const { useState, useEffect } = React;
-
-      // --- ICONS (SVG Components) ---
-      const IconBase = ({ children, className, size = 24 }) => (
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          width={size} 
-          height={size} 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          className={className}
-        >
-          {children}
-        </svg>
-      );
-
-      const ArrowDown = (props) => <IconBase {...props}><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></IconBase>;
-      const Shuffle = (props) => <IconBase {...props}><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l14.2-12.6c.8-1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l14.2 12.6c.8 1 2 1.7 3.3 1.7H22"/></IconBase>;
-      const Target = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></IconBase>;
-      const Zap = (props) => <IconBase {...props}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></IconBase>;
-      const BookOpen = (props) => <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
-      const Brain = (props) => <IconBase {...props}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></IconBase>;
-      const Sparkles = (props) => <IconBase {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M2 7h4"/><path d="M2 11h4"/></IconBase>;
-      const Bot = (props) => <IconBase {...props}><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></IconBase>;
-      const FileText = (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></IconBase>;
-      const ExternalLink = (props) => <IconBase {...props}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></IconBase>;
-      const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>;
-      const Map = (props) => <IconBase {...props}><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></IconBase>;
-      const ChevronRight = (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>;
-      const Smartphone = (props) => <IconBase {...props}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></IconBase>;
-      const Share2 = (props) => <IconBase {...props}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></IconBase>;
-      const Timer = (props) => <IconBase {...props}><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></IconBase>;
-      const PlayCircle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></IconBase>;
-      const Book = (props) => <IconBase {...props}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></IconBase>;
-      const Video = (props) => <IconBase {...props}><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></IconBase>;
-      const MonitorPlay = (props) => <IconBase {...props}><path d="m10 7 5 3-5 3Z"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></IconBase>;
-      const Menu = (props) => <IconBase {...props}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></IconBase>;
-
-      // --- CONSTANTS ---
-      const CONCEPT_CARDS = [
-        {
-          id: 1,
-          title: "시작은 '우연'",
-          frontQuestion: "장인은 처음부터 '운명'처럼 정해져 있었을까요?",
-          frontSub: "\"나는 태어날 때부터 이 일을 할 운명이야!\"라고 외치며 시작했을까요?",
-          backTitle: "아니요, 대부분 '우연'이었습니다.",
-          backContent: "놀랍게도 대다수의 장인은 거창한 계획보다는 우연한 만남, 예기치 않은 사건을 통해 자신의 분야에 발을 들였습니다. 중요한 건 시작의 이유가 아니라, 그 우연을 기회로 만든 태도였습니다.",
-          icon: <Shuffle className="w-8 h-8 text-[#A3C6FF]" />
-        },
-        {
-          id: 2,
-          title: "계획된 우연",
-          frontQuestion: "운이 좋아서 성공한 걸까요?",
-          frontSub: "\"그냥 운이 좋았네\"라고 말할 수 있을까요? 여기엔 비밀이 숨어있습니다.",
-          backTitle: "계획된 우연 (Planned Happenstance)",
-          backContent: "크럼볼츠 교수는 이를 '계획된 우연'이라고 불렀습니다. 호기심, 인내심, 유연성, 낙관성 같은 태도를 가진 사람은 우연한 사건조차 '학습의 기회'로 전환합니다.",
-          icon: <Target className="w-8 h-8 text-[#8C86FF]" />
-        },
-        {
-          id: 3,
-          title: "재능 vs 노력",
-          frontQuestion: "타고난 '재능'이 있어야만 장인이 될까요?",
-          frontSub: "\"나는 재능이 없어서 안 돼\"라고 포기하고 있나요?",
-          backTitle: "재능은 필요조건, 노력은 충분조건!",
-          backContent: "장인을 만든 건 재능보다 '지독한 학습'과 '강한 의지'였습니다. 최고가 되기 위해선 '의도적이고 집중적인 실천(Deliberate Practice)'이 필수적입니다.",
-          icon: <Zap className="w-8 h-8 text-[#A3C6FF]" />
-        },
-        {
-          id: 4,
-          title: "장인의 학습법",
-          frontQuestion: "장인은 어떻게 공부했을까요?",
-          frontSub: "친절한 선생님과 두꺼운 교과서가 있었을까요?",
-          backTitle: "어깨너머 배우기와 독학",
-          backContent: "그들은 스승의 작업을 어깨너머로 훔쳐보며 스스로 원리를 깨우쳤고, 아무도 가르쳐주지 않는 문제를 해결하기 위해 무수한 시행착오를 겪으며 단단해졌습니다.",
-          icon: <BookOpen className="w-8 h-8 text-[#8C86FF]" />
-        },
-        {
-          id: 5,
-          title: "손과 머리의 통합",
-          frontQuestion: "장인은 '손 기술'만 좋으면 될까요?",
-          frontSub: "몸만 쓰는 것과 머리만 쓰는 것, 장인은 어느 쪽일까요?",
-          backTitle: "생각하는 손, 수고하는 머리",
-          backContent: "진정한 장인은 이론과 실천을 분리하지 않습니다. 기능인은 이론을 공부해 '생각하는 손'이 되고, 지식인은 현장에서 부딪히며 '수고하는 머리'가 됩니다.",
-          icon: <Brain className="w-8 h-8 text-[#A3C6FF]" />
-        },
-        {
-          id: 6,
-          title: "필연의 완성",
-          frontQuestion: "그래서, '장인의 길'이란 무엇인가요?",
-          frontSub: "우연으로 시작된 길, 그 끝에는 무엇이 있을까요?",
-          backTitle: "우연을 '필연'으로 만드는 과정",
-          backContent: "우연히 마주친 기회를 꽉 잡고, 지독한 학습과 성실함으로 갈고닦아 '나 아니면 안 되는 필연적인 자리'로 만들어가는 과정입니다.",
-          icon: <Sparkles className="w-8 h-8 text-[#8C86FF]" />
-        }
-      ];
-
-      const RESOURCES = [
-        {
-          title: "도서: 마스터리티 - 일을 살아 숨 쉬게 만드는 힘",
-          url: "https://product.kyobobook.co.kr/detail/S000210711078",
-          type: "book"
-        },
-        {
-          title: "영상: 장인성, 일을 예술로 승화시키다",
-          url: "https://youtu.be/eHLHREJVmW8?si=5ABPHL3qYPytrCT8",
-          type: "video"
-        },
-        {
-          title: "강의: 연세대학교 LearnUs - 장인의 길",
-          url: "https://www.learnus.org/local/ubonline/view.php?id=216528",
-          type: "video"
-        },
-        {
-          title: "기사: 연세춘추 - 장인성 관련 아티클",
-          url: "https://chunchu.yonsei.ac.kr/news/articleView.html?idxno=28661",
-          type: "article"
-        }
-      ];
-
-      const LINKS = {
-        GEMINI_1: "https://gemini.google.com/gem/18pI4d5sZLcVFvXSg2ZkXfFJDeDQHCEcX?usp=sharing",
-        GEMINI_2: "https://gemini.google.com/gem/21b684f3ac00?usp=sharing",
-        PADLET: "https://padlet.com/km550625_/masterity-roadmap-archive-n6xxjbs4srbq1s62",
-        DIAGNOSIS_PAGE: "https://olloz3.github.io/MLS_test/"
-      };
-
-      // --- COMPONENTS ---
-
-      // 1. HEADER
-      const Header = () => {
-        const [scrolled, setScrolled] = useState(false);
-
-        useEffect(() => {
-          const handleScroll = () => {
-            setScrolled(window.scrollY > 50);
-          };
-          window.addEventListener('scroll', handleScroll);
-          return () => window.removeEventListener('scroll', handleScroll);
-        }, []);
-
-        const navItems = [
-          { label: 'Intro', href: '#intro' },
-          { label: 'Concept', href: '#concept' },
-          { label: 'Exercise', href: '#exercise' },
-          { label: 'Roadmap', href: '#roadmap' },
-          { label: 'Sharing', href: '#sharing' },
-        ];
-
-        return (
-          <header className={`fixed top-0 w-full z-50 transition-all duration-300 border-b ${scrolled ? 'bg-[#2A2A2A]/90 backdrop-blur-md border-gray-800 py-3' : 'bg-transparent border-transparent py-6'}`}>
-            <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-              <div className="font-bold text-xl tracking-tighter text-white">
-                MASTERITY<span className="text-[#8C86FF]">.</span>
-              </div>
-
-              <nav className="hidden md:flex gap-8">
-                {navItems.map((item) => (
-                  <a 
-                    key={item.label}
-                    href={item.href}
-                    className="text-sm font-medium text-gray-300 hover:text-[#8C86FF] transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
-              </nav>
-
-              <div className="md:hidden text-white">
-                <Menu className="w-6 h-6" />
-              </div>
+    <header class="fixed top-0 w-full z-50 transition-all duration-300 py-6" id="main-header">
+        <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+            <div class="font-bold text-xl tracking-tighter text-white">
+                MASTERITY<span class="text-mastery-primary">.</span>
             </div>
-          </header>
-        );
-      };
+            <nav class="hidden md:flex gap-8">
+                <a href="#intro" class="text-sm font-medium text-gray-300 hover:text-mastery-primary transition-colors">Intro</a>
+                <a href="#concept" class="text-sm font-medium text-gray-300 hover:text-mastery-primary transition-colors">Concept</a>
+                <a href="#exercise" class="text-sm font-medium text-gray-300 hover:text-mastery-primary transition-colors">Exercise</a>
+                <a href="#roadmap" class="text-sm font-medium text-gray-300 hover:text-mastery-primary transition-colors">Roadmap</a>
+                <a href="#sharing" class="text-sm font-medium text-gray-300 hover:text-mastery-primary transition-colors">Sharing</a>
+            </nav>
+        </div>
+    </header>
 
-      // 2. HERO
-      const Hero = () => {
-        return (
-          <section id="intro" className="relative min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-              <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#8C86FF] rounded-full blur-[150px] opacity-20 animate-pulse"></div>
-              <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-[#A3C6FF] rounded-full blur-[150px] opacity-10"></div>
-            </div>
+    <section id="intro" class="relative min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+            <div class="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-mastery-primary rounded-full blur-[150px] opacity-20 animate-pulse"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-mastery-secondary rounded-full blur-[150px] opacity-10"></div>
+        </div>
 
-            <div className="z-10 max-w-4xl mx-auto space-y-8">
-              <div className="inline-block px-4 py-1.5 rounded-full border border-[#8C86FF]/30 bg-[#8C86FF]/10 text-[#A3C6FF] text-sm font-semibold tracking-wide mb-4">
+        <div class="z-10 max-w-4xl mx-auto space-y-8">
+            <div class="inline-block px-4 py-1.5 rounded-full border border-mastery-primary/30 bg-mastery-primary/10 text-mastery-secondary text-sm font-semibold tracking-wide mb-4">
                 Learning Journey Map
-              </div>
-              
-              <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-tight">
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight text-white leading-tight">
                 우연은 어떻게 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8C86FF] to-[#A3C6FF]">
-                  필연이 되는가?
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-mastery-primary to-mastery-secondary">
+                    필연이 되는가?
                 </span>
-              </h1>
-              
-              <p className="text-xl md:text-2xl text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
                 성장의 기회는 예고 없이 찾아옵니다.<br/>
                 지금 당신의 우연을 필연으로 바꿀 시간입니다.
-              </p>
-
-              <div className="pt-12">
-                <a 
-                  href="#concept" 
-                  className="group flex flex-col items-center text-[#8C86FF] hover:text-[#A3C6FF] transition-colors duration-300"
-                >
-                  <span className="text-sm font-medium mb-2">여정 시작하기</span>
-                  <ArrowDown className="w-6 h-6 animate-bounce group-hover:translate-y-2 transition-transform" />
+            </p>
+            <div class="pt-12">
+                <a href="#concept" class="group flex flex-col items-center text-mastery-primary hover:text-mastery-secondary transition-colors duration-300">
+                    <span class="text-sm font-medium mb-2">여정 시작하기</span>
+                    <svg class="w-6 h-6 animate-bounce group-hover:translate-y-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
                 </a>
-              </div>
             </div>
-          </section>
-        );
-      };
+        </div>
+    </section>
 
-      // 3. CONCEPT CARDS
-      const FlipCard = ({ data }) => {
-        const [isFlipped, setIsFlipped] = useState(false);
-
-        return (
-          <div 
-            className="group perspective-1000 h-[380px] w-full cursor-pointer"
-            onClick={() => setIsFlipped(!isFlipped)}
-          >
-            <div className={`relative w-full h-full duration-500 transform-style-3d transition-transform ${isFlipped ? 'rotate-y-180' : ''}`}>
-              
-              {/* Front Face */}
-              <div className="absolute w-full h-full backface-hidden bg-[#2A2A2A] border border-gray-700 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-lg hover:border-[#8C86FF] transition-colors group-hover:shadow-[#8C86FF]/20">
-                <div className="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner">
-                  {data.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">{data.title}</h3>
-                <p className="text-[#A3C6FF] font-medium text-lg mb-2">{data.frontQuestion}</p>
-                <p className="text-gray-400 text-sm leading-relaxed">{data.frontSub}</p>
-                <div className="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
-              </div>
-
-              {/* Back Face */}
-              <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-gradient-to-br from-[#8C86FF] to-[#6d66ff] rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-xl">
-                <h3 className="text-xl font-extrabold text-white mb-4">{data.backTitle}</h3>
-                <div className="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
-                <p className="text-white/90 leading-relaxed font-medium">
-                  {data.backContent}
-                </p>
-              </div>
-
+    <section id="concept" class="py-24 px-4 bg-[#222]">
+        <div class="max-w-6xl mx-auto">
+            <div class="mb-12 text-center">
+                <h2 class="text-4xl font-bold text-white mb-4">장인의 눈으로 보기</h2>
+                <p class="text-gray-400">우연을 성장의 기회로 바꾸는 핵심 개념을 확인해보세요.</p>
             </div>
-          </div>
-        );
-      };
 
-      const ConceptCards = () => {
-        return (
-          <section id="concept" className="py-24 px-4 bg-[#222]">
-            <div className="max-w-6xl mx-auto">
-              <div className="mb-12 text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">장인의 눈으로 보기</h2>
-                <p className="text-gray-400">우연을 성장의 기회로 바꾸는 핵심 개념을 확인해보세요.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-                {CONCEPT_CARDS.map((card) => (
-                  <FlipCard key={card.id} data={card} />
-                ))}
-              </div>
-            </div>
-          </section>
-        );
-      };
-
-      // 4. GEMINI GATEWAY
-      const GeminiGateway = () => {
-        return (
-          <section id="exercise" className="py-24 px-4 bg-[#2A2A2A] relative overflow-hidden">
-            <div className="absolute right-0 top-20 w-96 h-96 bg-[#8C86FF]/5 rounded-full blur-3xl"></div>
-
-            <div className="max-w-5xl mx-auto relative z-10">
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#A3C6FF]/10 text-[#A3C6FF] text-sm font-medium mb-4">
-                  <Bot size={16} /> AI Coach
-                </div>
-                <h2 className="text-4xl font-bold text-white mb-4">우연 시나리오 작성하기</h2>
-                <p className="text-gray-400 mb-6">AI 코치에게 우리 조의 우연 사례를 들려주세요. <br className="hidden md:block"/>필연적 성장 방향을 제시해줍니다.</p>
-                
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#222] border border-[#A3C6FF]/30 text-[#A3C6FF]/90 text-sm">
-                    <span>💡</span>
-                    <span>AI 코칭(Gemini) 사용을 위해 구글 계정 로그인이 필요합니다.</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-8 mb-16">
-                {/* Card 1 */}
-                <div className="bg-[#333] border border-gray-700 rounded-2xl p-8 hover:border-[#8C86FF] transition-all group shadow-lg hover:shadow-[#8C86FF]/10">
-                  <div className="w-12 h-12 bg-[#8C86FF]/20 rounded-xl flex items-center justify-center mb-6 text-[#8C86FF] group-hover:bg-[#8C86FF] group-hover:text-white transition-colors">
-                    <Bot size={24} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">활동 1: 개인 우연 시나리오</h3>
-                  <p className="text-gray-400 mb-6 text-sm">개인의 경험 속에서 발견한 우연을 분석하고 필연으로 전환하는 방법을 모색합니다.</p>
-                  <a 
-                    href={LINKS.GEMINI_1} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-full py-3 px-4 bg-[#8C86FF] hover:bg-[#7b75f0] text-white rounded-lg font-medium transition-colors"
-                  >
-                    AI 코치와 대화하기 (활동1) <ExternalLink size={16} className="ml-2"/>
-                  </a>
-                </div>
-
-                {/* Card 2 */}
-                <div className="bg-[#333] border border-gray-700 rounded-2xl p-8 hover:border-[#A3C6FF] transition-all group shadow-lg hover:shadow-[#A3C6FF]/10">
-                  <div className="w-12 h-12 bg-[#A3C6FF]/20 rounded-xl flex items-center justify-center mb-6 text-[#A3C6FF] group-hover:bg-[#A3C6FF] group-hover:text-[#2A2A2A] transition-colors">
-                    <Bot size={24} />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">활동 2: 커리어 우연 시나리오</h3>
-                  <p className="text-gray-400 mb-6 text-sm">직무 내에서 발생할 수 있는 우연한 상황을 시뮬레이션하고 대응 전략을 수립합니다.</p>
-                  <a 
-                    href={LINKS.GEMINI_2} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center w-full py-3 px-4 bg-[#A3C6FF] hover:bg-[#92b8f5] text-[#2A2A2A] rounded-lg font-medium transition-colors"
-                  >
-                    AI 코치와 대화하기 (활동2) <ExternalLink size={16} className="ml-2"/>
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex justify-center border-t border-gray-800 pt-12">
-                <button className="group flex items-center gap-4 pl-4 pr-6 py-3 bg-[#222] border border-gray-700 hover:border-[#E5E7EB] rounded-full transition-all duration-300 hover:bg-[#2c2c2c] hover:shadow-lg">
-                  <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center group-hover:bg-gray-700 transition-colors">
-                    <FileText size={18} className="text-gray-400 group-hover:text-white" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">활동 준비물</div>
-                    <div className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">워크시트 다운로드 (PDF)</div>
-                  </div>
-                  <Download size={16} className="text-gray-600 group-hover:text-white ml-2 transition-colors" />
-                </button>
-              </div>
-            </div>
-          </section>
-        );
-      };
-
-      // 5. ROADMAP GATEWAY
-      const RoadmapGateway = () => {
-        return (
-          <section id="roadmap" className="py-24 px-4 bg-gradient-to-b from-[#222] to-[#2A2A2A]">
-            <div className="max-w-5xl mx-auto">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-12">
-                
-                <div className="flex-1 space-y-6">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8C86FF]/10 text-[#8C86FF] text-sm font-medium">
-                    <Map size={16} /> 나의 성장 지도
-                  </div>
-                  <h2 className="text-4xl font-bold text-white leading-tight">
-                    나만의 <span className="text-[#8C86FF]">커리어 성장 로드맵</span>을<br/>
-                    설계하세요.
-                  </h2>
-                  <p className="text-gray-400 text-lg">
-                    진단을 통해 현재의 장인적 학습 역량을 확인하고,<br/>
-                    맞춤형 성장 목표를 설정하는 Opal 앱으로 이동합니다.
-                  </p>
-                  
-                  <div className="pt-4">
-                    <a 
-                      href={LINKS.DIAGNOSIS_PAGE}
-                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-[#8C86FF] to-[#6d66ff] text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-[#8C86FF]/40 hover:-translate-y-1 transition-all duration-300"
-                    >
-                      <Smartphone size={20} />
-                      진단 및 로드맵 시작하기
-                      <ChevronRight size={20} />
-                    </a>
-                    <p className="mt-3 text-sm text-gray-500 pl-2 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#A3C6FF] animate-pulse"></span>
-                      약 10분 소요
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex-1 w-full max-w-md">
-                  <div className="bg-[#333] rounded-2xl p-8 border border-gray-700 relative">
-                    <h3 className="text-white font-bold mb-8 text-center border-b border-gray-700 pb-4">Opal 사용 가이드</h3>
-                    
-                    <div className="relative flex flex-col gap-8">
-                      <div className="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-700"></div>
-
-                      <div className="flex gap-4 relative">
-                        <div className="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-[#8C86FF] rounded-full flex items-center justify-center text-[#8C86FF] font-bold z-10">1</div>
-                        <div>
-                          <h4 className="text-white font-semibold">장인적 학습 척도 진단</h4>
-                          <p className="text-gray-500 text-sm mt-1">5가지 하위 요인별 강점 및 개발 필요 영역을 확인합니다.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8" id="card-grid">
+                <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-secondary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l14.2-12.6c.8-1 2-1.7 3.3-1.7H22"/><path d="M2 6h1.4c1.3 0 2.5.6 3.3 1.7l14.2 12.6c.8 1 2 1.7 3.3 1.7H22"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">시작은 '우연'</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">장인은 처음부터 '운명'처럼 정해져 있었을까요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">"나는 태어날 때부터 이 일을 할 운명이야!"라고 외치며 시작했을까요?</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
                         </div>
-                      </div>
-
-                      <div className="flex gap-4 relative">
-                        <div className="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-[#A3C6FF] rounded-full flex items-center justify-center text-[#A3C6FF] font-bold z-10">2</div>
-                        <div>
-                          <h4 className="text-white font-semibold">초점 영역 선택</h4>
-                          <p className="text-gray-500 text-sm mt-1">강화하거나 보완하고 싶은 역량을 선택하여 우선순위를 정합니다.</p>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">아니요, 대부분 '우연'이었습니다.</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">놀랍게도 대다수의 장인은 거창한 계획보다는 우연한 만남, 예기치 않은 사건을 통해 자신의 분야에 발을 들였습니다. 중요한 건 시작의 이유가 아니라, 그 우연을 기회로 만든 태도였습니다.</p>
                         </div>
-                      </div>
-
-                      <div className="flex gap-4 relative">
-                        <div className="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-white rounded-full flex items-center justify-center text-white font-bold z-10">3</div>
-                        <div>
-                          <h4 className="text-white font-semibold">로드맵 생성</h4>
-                          <p className="text-gray-500 text-sm mt-1">AI가 제안하는 맞춤형 성장 로드맵을 확인하고 저장합니다.</p>
-                        </div>
-                      </div>
                     </div>
-
-                  </div>
                 </div>
 
-              </div>
-            </div>
-          </section>
-        );
-      };
-
-      // 6. ACTION & SHARING
-      const CountdownTimer = () => {
-        const [isRunning, setIsRunning] = useState(false);
-        const [timeLeft, setTimeLeft] = useState(72 * 60 * 60);
-
-        useEffect(() => {
-          let timer;
-          if (isRunning) {
-            timer = setInterval(() => {
-              setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-            }, 1000);
-          }
-          return () => clearInterval(timer);
-        }, [isRunning]);
-
-        const hours = Math.floor(timeLeft / 3600);
-        const minutes = Math.floor((timeLeft % 3600) / 60);
-        const seconds = timeLeft % 60;
-
-        if (!isRunning) {
-          return (
-            <div className="relative mt-8 inline-block">
-              {/* Blinking Ping Effect */}
-              <span className="absolute -inset-1 rounded-xl bg-[#8C86FF] opacity-40 animate-ping"></span>
-              
-              <button 
-                onClick={() => setIsRunning(true)}
-                className="relative group overflow-hidden inline-flex items-center gap-3 px-8 py-4 bg-[#8C86FF] hover:bg-[#7b75f0] text-white rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(140,134,255,0.4)] transition-all duration-300 animate-subtle-bounce z-10"
-              >
-                {/* Shimmer Effect */}
-                <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
+                <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-primary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">계획된 우연</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">운이 좋아서 성공한 걸까요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">"그냥 운이 좋았네"라고 말할 수 있을까요? 여기엔 비밀이 숨어있습니다.</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
+                        </div>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">계획된 우연 (Planned Happenstance)</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">크럼볼츠 교수는 이를 '계획된 우연'이라고 불렀습니다. 호기심, 인내심, 유연성, 낙관성 같은 태도를 가진 사람은 우연한 사건조차 '학습의 기회'로 전환합니다.</p>
+                        </div>
+                    </div>
+                </div>
                 
-                {/* Content */}
-                <span className="relative flex items-center gap-3 z-10">
-                  <PlayCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                  여정 이어가기
-                </span>
-              </button>
-            </div>
-          );
-        }
-
-        return (
-          <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500">
-             <div className="flex items-center justify-center gap-2 sm:gap-4 text-white font-mono text-3xl md:text-5xl font-bold tracking-widest mt-8">
-              <div className="bg-[#333] p-4 rounded-lg border border-[#8C86FF] shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]">
-                {String(hours).padStart(2, '0')}
-              </div>
-              <span className="text-[#8C86FF] pb-2">:</span>
-              <div className="bg-[#333] p-4 rounded-lg border border-[#8C86FF] shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]">
-                {String(minutes).padStart(2, '0')}
-              </div>
-              <span className="text-[#8C86FF] pb-2">:</span>
-              <div className="bg-[#333] p-4 rounded-lg border border-[#8C86FF] shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]">
-                {String(seconds).padStart(2, '0')}
-              </div>
-            </div>
-            <p className="mt-4 text-[#A3C6FF] text-sm animate-pulse">Time is ticking...</p>
-          </div>
-        );
-      };
-
-      const ActionSharing = () => {
-        return (
-          <section id="sharing" className="py-24 px-4 bg-[#2A2A2A]">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-gray-300 text-sm font-medium mb-4">
-                  <Share2 size={16} /> Real-time Sharing
+                <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-secondary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">재능 vs 노력</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">타고난 '재능'이 있어야만 장인이 될까요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">"나는 재능이 없어서 안 돼"라고 포기하고 있나요?</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
+                        </div>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">재능은 필요조건, 노력은 충분조건!</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">장인을 만든 건 재능보다 '지독한 학습'과 '강한 의지'였습니다. 최고가 되기 위해선 '의도적이고 집중적인 실천(Deliberate Practice)'이 필수적입니다.</p>
+                        </div>
+                    </div>
                 </div>
-                <h2 className="text-4xl font-bold text-white mb-4">다짐과 선언</h2>
-                <p className="text-gray-400">
-                  동료들의 성장을 응원해주세요. <br/>
-                  이번 시간에 설계한 로드맵의 핵심 목표를 아래 보드에 공유합니다.
+
+                <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-primary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">장인의 학습법</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">장인은 어떻게 공부했을까요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">친절한 선생님과 두꺼운 교과서가 있었을까요?</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
+                        </div>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">어깨너머 배우기와 독학</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">그들은 스승의 작업을 어깨너머로 훔쳐보며 스스로 원리를 깨우쳤고, 아무도 가르쳐주지 않는 문제를 해결하기 위해 무수한 시행착오를 겪으며 단단해졌습니다.</p>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-secondary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">손과 머리의 통합</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">장인은 '손 기술'만 좋으면 될까요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">몸만 쓰는 것과 머리만 쓰는 것, 장인은 어느 쪽일까요?</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
+                        </div>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">생각하는 손, 수고하는 머리</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">진정한 장인은 이론과 실천을 분리하지 않습니다. 기능인은 이론을 공부해 '생각하는 손'이 되고, 지식인은 현장에서 부딪히며 '수고하는 머리'가 됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flip-card group" onclick="this.classList.toggle('flipped')">
+                    <div class="flip-card-inner">
+                        <div class="flip-card-front group-hover:border-mastery-primary group-hover:shadow-[0_0_20px_rgba(140,134,255,0.1)] transition-all">
+                            <div class="mb-6 p-4 bg-[#2A2A2A] rounded-full border border-gray-600 shadow-inner text-mastery-primary">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M2 7h4"/><path d="M2 11h4"/></svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-white mb-4">필연의 완성</h3>
+                            <p class="text-mastery-secondary font-medium text-lg mb-2">그래서, '장인의 길'이란 무엇인가요?</p>
+                            <p class="text-gray-400 text-sm leading-relaxed">우연으로 시작된 길, 그 끝에는 무엇이 있을까요?</p>
+                            <div class="absolute bottom-6 text-xs text-gray-500 uppercase tracking-widest">Click to Flip</div>
+                        </div>
+                        <div class="flip-card-back">
+                            <h3 class="text-xl font-extrabold text-white mb-4">우연을 '필연'으로 만드는 과정</h3>
+                            <div class="w-12 h-1 bg-white/30 rounded-full mb-6"></div>
+                            <p class="text-white/90 leading-relaxed font-medium">우연히 마주친 기회를 꽉 잡고, 지독한 학습과 성실함으로 갈고닦아 '나 아니면 안 되는 필연적인 자리'로 만들어가는 과정입니다.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="exercise" class="py-24 px-4 bg-[#2A2A2A] relative overflow-hidden">
+        <div class="absolute right-0 top-20 w-96 h-96 bg-mastery-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="max-w-5xl mx-auto relative z-10">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-mastery-secondary/10 text-mastery-secondary text-sm font-medium mb-4">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    AI Coach
+                </div>
+                <h2 class="text-4xl font-bold text-white mb-4">우연 시나리오 작성하기</h2>
+                <p class="text-gray-400 mb-6">AI 코치에게 우리 조의 우연 사례를 들려주세요. <br class="hidden md:block"/>필연적 성장 방향을 제시해줍니다.</p>
+                <div class="flex justify-center">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#222] border border-mastery-secondary/30 text-mastery-secondary/90 text-sm">
+                        <span>💡</span>
+                        <span>AI 코칭(Gemini) 사용을 위해 구글 계정 로그인이 필요합니다.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-16">
+                <div class="bg-[#333] border border-gray-700 rounded-2xl p-8 hover:border-mastery-primary transition-all group shadow-lg hover:shadow-mastery-primary/10">
+                    <div class="w-12 h-12 bg-mastery-primary/20 rounded-xl flex items-center justify-center mb-6 text-mastery-primary group-hover:bg-mastery-primary group-hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">활동 1: 개인 우연 시나리오</h3>
+                    <p class="text-gray-400 mb-6 text-sm">개인의 경험 속에서 발견한 우연을 분석하고 필연으로 전환하는 방법을 모색합니다.</p>
+                    <a href="https://gemini.google.com/gem/18pI4d5sZLcVFvXSg2ZkXfFJDeDQHCEcX?usp=sharing" target="_blank" class="inline-flex items-center justify-center w-full py-3 px-4 bg-mastery-primary hover:bg-[#7b75f0] text-white rounded-lg font-medium transition-colors">
+                        AI 코치와 대화하기 (활동1) <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
+                </div>
+
+                <div class="bg-[#333] border border-gray-700 rounded-2xl p-8 hover:border-mastery-secondary transition-all group shadow-lg hover:shadow-mastery-secondary/10">
+                    <div class="w-12 h-12 bg-mastery-secondary/20 rounded-xl flex items-center justify-center mb-6 text-mastery-secondary group-hover:bg-mastery-secondary group-hover:text-[#2A2A2A] transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">활동 2: 커리어 우연 시나리오</h3>
+                    <p class="text-gray-400 mb-6 text-sm">직무 내에서 발생할 수 있는 우연한 상황을 시뮬레이션하고 대응 전략을 수립합니다.</p>
+                    <a href="https://gemini.google.com/gem/21b684f3ac00?usp=sharing" target="_blank" class="inline-flex items-center justify-center w-full py-3 px-4 bg-mastery-secondary hover:bg-[#92b8f5] text-[#2A2A2A] rounded-lg font-medium transition-colors">
+                        AI 코치와 대화하기 (활동2) <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex justify-center border-t border-gray-800 pt-12">
+                <button class="group flex items-center gap-4 pl-4 pr-6 py-3 bg-[#222] border border-gray-700 hover:border-[#E5E7EB] rounded-full transition-all duration-300 hover:bg-[#2c2c2c] hover:shadow-lg">
+                    <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center group-hover:bg-gray-700 transition-colors">
+                        <svg class="w-5 h-5 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </div>
+                    <div class="text-left">
+                        <div class="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">활동 준비물</div>
+                        <div class="text-sm font-bold text-gray-200 group-hover:text-white transition-colors">워크시트 다운로드 (PDF)</div>
+                    </div>
+                    <svg class="w-4 h-4 text-gray-600 group-hover:text-white ml-2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="roadmap" class="py-24 px-4 bg-gradient-to-b from-[#222] to-[#2A2A2A]">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-12">
+                <div class="flex-1 space-y-6">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-mastery-primary/10 text-mastery-primary text-sm font-medium">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+                         나의 성장 지도
+                    </div>
+                    <h2 class="text-4xl font-bold text-white leading-tight">
+                        나만의 <span class="text-mastery-primary">커리어 성장 로드맵</span>을<br/>
+                        설계하세요.
+                    </h2>
+                    <p class="text-gray-400 text-lg">
+                        진단을 통해 현재의 장인적 학습 역량을 확인하고,<br/>
+                        맞춤형 성장 목표를 설정하는 Opal 앱으로 이동합니다.
+                    </p>
+                    <div class="pt-4">
+                        <a href="https://olloz3.github.io/MLS_test/" class="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-mastery-primary to-[#6d66ff] text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-mastery-primary/40 hover:-translate-y-1 transition-all duration-300">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+                            진단 및 로드맵 시작하기
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+                        </a>
+                        <p class="mt-3 text-sm text-gray-500 pl-2 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-mastery-secondary animate-pulse"></span>
+                            약 10분 소요
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex-1 w-full max-w-md">
+                    <div class="bg-[#333] rounded-2xl p-8 border border-gray-700 relative">
+                        <h3 class="text-white font-bold mb-8 text-center border-b border-gray-700 pb-4">Opal 사용 가이드</h3>
+                        <div class="relative flex flex-col gap-8">
+                            <div class="absolute left-6 top-4 bottom-4 w-0.5 bg-gray-700"></div>
+                            <div class="flex gap-4 relative">
+                                <div class="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-mastery-primary rounded-full flex items-center justify-center text-mastery-primary font-bold z-10">1</div>
+                                <div>
+                                    <h4 class="text-white font-semibold">장인적 학습 척도 진단</h4>
+                                    <p class="text-gray-500 text-sm mt-1">5가지 하위 요인별 강점 및 개발 필요 영역을 확인합니다.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 relative">
+                                <div class="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-mastery-secondary rounded-full flex items-center justify-center text-mastery-secondary font-bold z-10">2</div>
+                                <div>
+                                    <h4 class="text-white font-semibold">초점 영역 선택</h4>
+                                    <p class="text-gray-500 text-sm mt-1">강화하거나 보완하고 싶은 역량을 선택하여 우선순위를 정합니다.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 relative">
+                                <div class="w-12 h-12 flex-shrink-0 bg-[#2A2A2A] border border-white rounded-full flex items-center justify-center text-white font-bold z-10">3</div>
+                                <div>
+                                    <h4 class="text-white font-semibold">로드맵 생성</h4>
+                                    <p class="text-gray-500 text-sm mt-1">AI가 제안하는 맞춤형 성장 로드맵을 확인하고 저장합니다.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="sharing" class="py-24 px-4 bg-[#2A2A2A]">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-gray-300 text-sm font-medium mb-4">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                     Real-time Sharing
+                </div>
+                <h2 class="text-4xl font-bold text-white mb-4">다짐과 선언</h2>
+                <p class="text-gray-400">
+                    동료들의 성장을 응원해주세요. <br/>
+                    Opal에서 설계한 로드맵의 핵심 목표를 아래 보드에 공유합니다.
                 </p>
-              </div>
+            </div>
 
-              {/* Padlet Embed */}
-              <div className="w-full h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-gray-700 bg-[#222] mb-20">
-                 <iframe 
-                  src={LINKS.PADLET} 
-                  className="w-full h-full border-0"
-                  allow="camera;microphone;geolocation"
-                  title="Padlet Sharing Board"
-                ></iframe>
-              </div>
+            <div class="w-full h-[600px] rounded-2xl overflow-hidden shadow-2xl border border-gray-700 bg-[#222] mb-20">
+                <iframe src="https://padlet.com/km550625_/masterity-roadmap-archive-n6xxjbs4srbq1s62" class="w-full h-full border-0" allow="camera;microphone;geolocation" title="Padlet Sharing Board"></iframe>
+            </div>
 
-              {/* Timer Section */}
-              <div className="border-t border-gray-800 pt-16 text-center">
-                <div className="inline-flex items-center gap-2 text-[#8C86FF] font-bold mb-4">
-                  <Timer className="animate-pulse" /> GOLDEN TIME
+            <div class="border-t border-gray-800 pt-16 text-center">
+                <div class="inline-flex items-center gap-2 text-mastery-primary font-bold mb-4">
+                    <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+                     GOLDEN TIME
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-2">실행의 골든타임이 가고 있습니다!</h2>
-                <p className="text-gray-400">교육 종료 후 72시간 내에 첫 번째 작은 행동을 시작하세요.</p>
-                <CountdownTimer />
-              </div>
+                <h2 class="text-3xl font-bold text-white mb-2">실행의 골든타임이 가고 있습니다!</h2>
+                <p class="text-gray-400">교육 종료 후 72시간 내에 첫 번째 작은 행동을 시작하세요.</p>
+                
+                <div id="countdown-container" class="mt-8">
+                    <div class="relative inline-block">
+                        <span class="absolute -inset-1 rounded-xl bg-mastery-primary opacity-40 animate-ping"></span>
+                        <button onclick="startTimer()" class="relative group overflow-hidden inline-flex items-center gap-3 px-8 py-4 bg-mastery-primary hover:bg-[#7b75f0] text-white rounded-xl font-bold text-lg shadow-[0_0_20px_rgba(140,134,255,0.4)] transition-all duration-300 animate-subtle-bounce z-10">
+                            <div class="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
+                            <span class="relative flex items-center gap-3 z-10">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                                여정 이어가기
+                            </span>
+                        </button>
+                    </div>
+                </div>
             </div>
-          </section>
-        );
-      };
+        </div>
+    </section>
 
-      // 7. ARCHIVE
-      const ResourceItem = ({ item }) => {
-        let Icon = Book;
-        if (item.type === 'video') Icon = Video;
-        if (item.title.includes('강의')) Icon = MonitorPlay;
-        if (item.type === 'article') Icon = FileText;
-
-        return (
-          <a 
-            href={item.url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center gap-4 p-4 rounded-xl bg-[#333] border border-gray-700 hover:border-[#A3C6FF] hover:bg-[#383838] transition-all group"
-          >
-            <div className="p-3 rounded-lg bg-[#2A2A2A] text-[#A3C6FF] group-hover:text-white transition-colors">
-              <Icon size={24} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-white font-medium group-hover:text-[#A3C6FF] transition-colors">{item.title}</h4>
-            </div>
-            <ExternalLink size={18} className="text-gray-500 group-hover:text-white" />
-          </a>
-        );
-      };
-
-      const Archive = () => {
-        return (
-          <section id="archive" className="py-24 px-4 bg-[#1a1a1a] border-t border-gray-800">
-            <div className="max-w-4xl mx-auto">
-              <div>
-                <h3 className="text-xl font-bold text-white mb-8 border-l-4 border-[#A3C6FF] pl-4">
-                  추천 자료
+    <section id="archive" class="py-24 px-4 bg-[#1a1a1a] border-t border-gray-800">
+        <div class="max-w-4xl mx-auto">
+            <div>
+                <h3 class="text-xl font-bold text-white mb-8 border-l-4 border-mastery-secondary pl-4">
+                    추천 자료
                 </h3>
-                <div className="space-y-4">
-                  {RESOURCES.map((resource, index) => (
-                    <ResourceItem key={index} item={resource} />
-                  ))}
+                <div class="space-y-4">
+                    <a href="https://product.kyobobook.co.kr/detail/S000210711078" target="_blank" class="flex items-center gap-4 p-4 rounded-xl bg-[#333] border border-gray-700 hover:border-mastery-secondary hover:bg-[#383838] transition-all group">
+                        <div class="p-3 rounded-lg bg-[#2A2A2A] text-mastery-secondary group-hover:text-white transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        </div>
+                        <div class="flex-1"><h4 class="text-white font-medium group-hover:text-mastery-secondary transition-colors">도서: 마스터리티 - 일을 살아 숨 쉬게 만드는 힘</h4></div>
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
+                    
+                    <a href="https://youtu.be/eHLHREJVmW8?si=5ABPHL3qYPytrCT8" target="_blank" class="flex items-center gap-4 p-4 rounded-xl bg-[#333] border border-gray-700 hover:border-mastery-secondary hover:bg-[#383838] transition-all group">
+                        <div class="p-3 rounded-lg bg-[#2A2A2A] text-mastery-secondary group-hover:text-white transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+                        </div>
+                        <div class="flex-1"><h4 class="text-white font-medium group-hover:text-mastery-secondary transition-colors">영상: 장인성, 일을 예술로 승화시키다</h4></div>
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
+
+                    <a href="https://www.learnus.org/local/ubonline/view.php?id=216528" target="_blank" class="flex items-center gap-4 p-4 rounded-xl bg-[#333] border border-gray-700 hover:border-mastery-secondary hover:bg-[#383838] transition-all group">
+                        <div class="p-3 rounded-lg bg-[#2A2A2A] text-mastery-secondary group-hover:text-white transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="m10 7 5 3-5 3Z"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+                        </div>
+                        <div class="flex-1"><h4 class="text-white font-medium group-hover:text-mastery-secondary transition-colors">강의: 연세대학교 LearnUs - 장인의 길</h4></div>
+                        <svg class="w-5 h-5 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                    </a>
                 </div>
-              </div>
             </div>
-          </section>
-        );
-      };
+        </div>
+    </section>
 
-      // 8. FOOTER
-      const Footer = () => {
-        return (
-          <footer className="py-12 bg-[#111] text-center border-t border-gray-900">
-            <div className="px-4">
-              <p className="text-gray-500 text-sm mb-2">Masterity Learning Journey Map</p>
-              <p className="text-gray-600 text-xs">
+    <footer class="py-12 bg-[#111] text-center border-t border-gray-900">
+        <div class="px-4">
+            <p class="text-gray-500 text-sm mb-2">Masterity Learning Journey Map</p>
+            <p class="text-gray-600 text-xs">
                 Copyright © 2025 산업교육실제 - 우연과 필연. All rights reserved.
-              </p>
-            </div>
-          </footer>
-        );
-      };
+            </p>
+        </div>
+    </footer>
 
-      // --- APP ROOT ---
-      const App = () => {
-        return (
-          <div className="bg-[#2A2A2A] min-h-screen text-gray-100 font-sans selection:bg-[#8C86FF] selection:text-white">
-            <Header />
-            <main>
-              <Hero />
-              <ConceptCards />
-              <GeminiGateway />
-              <RoadmapGateway />
-              <ActionSharing />
-              <Archive />
-            </main>
-            <Footer />
-          </div>
-        );
-      };
+    <script>
+        // 1. Header Scroll Effect
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                header.classList.add('bg-[#2A2A2A]/90', 'backdrop-blur-md', 'border-b', 'border-gray-800', 'py-3');
+                header.classList.remove('bg-transparent', 'py-6');
+            } else {
+                header.classList.remove('bg-[#2A2A2A]/90', 'backdrop-blur-md', 'border-b', 'border-gray-800', 'py-3');
+                header.classList.add('bg-transparent', 'py-6');
+            }
+        });
 
-      // --- RENDER ---
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
+        // 2. Timer Logic
+        function startTimer() {
+            const container = document.getElementById('countdown-container');
+            let timeLeft = 72 * 60 * 60; // 72 hours
+            
+            // UI 변경 (타이머 표시)
+            container.innerHTML = `
+                <div class="flex flex-col items-center animate-pulse">
+                    <div class="flex items-center justify-center gap-2 sm:gap-4 text-white font-mono text-3xl md:text-5xl font-bold tracking-widest mt-8">
+                        <div class="bg-[#333] p-4 rounded-lg border border-mastery-primary shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]" id="t-hours">72</div>
+                        <span class="text-mastery-primary pb-2">:</span>
+                        <div class="bg-[#333] p-4 rounded-lg border border-mastery-primary shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]" id="t-minutes">00</div>
+                        <span class="text-mastery-primary pb-2">:</span>
+                        <div class="bg-[#333] p-4 rounded-lg border border-mastery-primary shadow-[0_0_20px_rgba(140,134,255,0.2)] min-w-[80px] md:min-w-[100px]" id="t-seconds">00</div>
+                    </div>
+                    <p class="mt-4 text-mastery-secondary text-sm">Time is ticking...</p>
+                </div>
+            `;
+
+            // 카운트다운 시작
+            setInterval(() => {
+                if (timeLeft > 0) timeLeft--;
+                
+                const h = Math.floor(timeLeft / 3600);
+                const m = Math.floor((timeLeft % 3600) / 60);
+                const s = timeLeft % 60;
+
+                document.getElementById('t-hours').innerText = String(h).padStart(2, '0');
+                document.getElementById('t-minutes').innerText = String(m).padStart(2, '0');
+                document.getElementById('t-seconds').innerText = String(s).padStart(2, '0');
+            }, 1000);
+        }
     </script>
 </body>
 </html>
